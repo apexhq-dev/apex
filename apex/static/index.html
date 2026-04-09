@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Apex — ML Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="/css/app.css"/>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 13 13" fill="none"><path d="M2 11L6.5 2L11 11" stroke="#06080B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3.5 8H9.5" stroke="#06080B" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </div>
+    Apex
+  </div>
+  <div class="ws-pill">team / <span id="ws-name">apex-local</span></div>
+  <div class="topbar-hw">
+    <div class="hw-seg">
+      <span class="hw-key">GPU</span>
+      <div class="hw-bar"><div class="hw-fill" id="tb-gpu" style="width:0%;background:var(--accent)"></div></div>
+      <span class="hw-val" id="tb-gpu-v">—</span>
+    </div>
+    <div class="hw-seg">
+      <span class="hw-key">VRAM</span>
+      <span class="hw-val" id="tb-vram">— / — GB</span>
+    </div>
+    <div class="hw-seg">
+      <span class="hw-key">CPU</span>
+      <div class="hw-bar"><div class="hw-fill" id="tb-cpu" style="width:0%;background:var(--purple)"></div></div>
+      <span class="hw-val" id="tb-cpu-v">—</span>
+    </div>
+    <div class="hw-seg">
+      <span class="hw-key">Temp</span>
+      <span class="hw-val" id="tb-temp">—</span>
+    </div>
+  </div>
+  <div class="notif-btn"><div class="notif-dot"></div>🔔</div>
+  <div class="avatar" id="avatar">AK</div>
+</div>
+
+<!-- BODY -->
+<div class="body">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="nav">
+      <div class="nav-group">
+        <div class="nav-group-label">Workspace</div>
+        <div class="nav-item active" data-route="#/"><span class="nav-ico">⬡</span> Overview</div>
+        <div class="nav-item" data-route="#/jobs"><span class="nav-ico">▶</span> Jobs <span class="nav-badge badge-active" id="nav-jobs-count">0</span></div>
+        <div class="nav-item" data-route="#/sessions"><span class="nav-ico">⌨</span> Sessions <span class="nav-badge badge-muted" id="nav-sess-count">0</span></div>
+        <div class="nav-item" data-route="#/metrics"><span class="nav-ico">◉</span> Metrics</div>
+        <div class="nav-item" data-route="#/images"><span class="nav-ico">⚙</span> Images <span class="nav-badge badge-muted" id="nav-img-count">0</span></div>
+      </div>
+      <div class="nav-group">
+        <div class="nav-group-label">Team</div>
+        <div class="nav-item" data-route="#/members"><span class="nav-ico">◈</span> Members</div>
+        <div class="nav-item" data-route="#/audit"><span class="nav-ico">⊞</span> Audit log</div>
+        <div class="nav-item" data-route="#/secrets"><span class="nav-ico">◇</span> Secrets</div>
+        <div class="nav-item" data-route="#/settings"><span class="nav-ico">⚙</span> Settings</div>
+      </div>
+    </div>
+    <div class="sidebar-gpu">
+      <div class="gpu-label">Active GPU</div>
+      <div class="gpu-name" id="sb-gpu-name">No GPU detected</div>
+      <div class="gpu-sub" id="sb-gpu-sub">— GB · — CUDA</div>
+      <div class="gpu-stat-row"><span class="gpu-stat-key">Utilisation</span><span class="gpu-stat-val" id="sb-gpu" style="color:var(--accent)">—</span></div>
+      <div class="mini-bar"><div class="mini-fill" id="sb-gpu-b" style="width:0%;background:var(--accent)"></div></div>
+      <div class="gpu-stat-row"><span class="gpu-stat-key">Power draw</span><span class="gpu-stat-val" style="color:var(--orange)" id="sb-pwr">—</span></div>
+      <div class="gpu-stat-row"><span class="gpu-stat-key">Temperature</span><span class="gpu-stat-val" id="sb-temp" style="color:var(--amber)">—</span></div>
+    </div>
+    <div class="sidebar-plan" id="sidebar-plan" title="View plan & settings">
+      <div class="plan-tier">TEAM PLAN</div>
+      <div class="plan-desc">6 of 8 seats · $29 / mo</div>
+      <button class="plan-upgrade" id="btn-plan-invite">Invite members →</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="page-header">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div class="page-title" id="page-title">Overview</div>
+          <div class="page-sub" id="page-sub">Loading…</div>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-ghost" id="btn-view-logs">View logs</button>
+          <button class="btn-primary" onclick="document.getElementById('job-name').focus()">+ Submit job</button>
+        </div>
+      </div>
+      <div class="page-tabs">
+        <div class="ptab active" data-tab="dashboard">Dashboard</div>
+        <div class="ptab" data-tab="history">Job history</div>
+        <div class="ptab" data-tab="models">Model registry</div>
+        <div class="ptab" data-tab="team">Team</div>
+      </div>
+    </div>
+
+    <div class="scroll">
+
+    <!-- ============================================================== -->
+    <!-- ROUTE: OVERVIEW (#/, #/jobs, #/members)                         -->
+    <!-- ============================================================== -->
+    <div class="route-view active" id="route-overview">
+
+    <!-- ============ TAB: DASHBOARD ============ -->
+    <div class="tab-pane active" id="tab-dashboard">
+
+      <!-- STAT CARDS -->
+      <div class="stat-row">
+        <div class="stat-card">
+          <div class="stat-card-top"><span class="stat-label">Jobs today</span><span>▶</span></div>
+          <div class="stat-num" id="sc-jobs">0</div>
+          <div class="stat-meta" id="sc-jobs-meta">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top"><span class="stat-label">GPU hours used</span><span>⏱</span></div>
+          <div class="stat-num" id="sc-gpuh">0.0</div>
+          <div class="stat-meta" id="sc-gpuh-meta"><b style="color:var(--accent)">0</b> jobs active</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top"><span class="stat-label">Queue depth</span><span>⊟</span></div>
+          <div class="stat-num" id="sc-queue">0</div>
+          <div class="stat-meta" id="sc-queue-meta">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top"><span class="stat-label">Success rate</span><span>◉</span></div>
+          <div class="stat-num"><span id="sc-success">—</span><span style="font-size:14px;color:var(--text2)">%</span></div>
+          <div class="stat-meta" id="sc-success-meta"><b style="color:var(--red)">0</b> failed today</div>
+        </div>
+      </div>
+
+      <!-- TWO COL -->
+      <div class="two-col">
+
+        <!-- LEFT -->
+        <div style="display:flex;flex-direction:column;gap:14px">
+
+          <!-- GPU Chart -->
+          <div class="panel">
+            <div class="ph">
+              <div class="ph-title">GPU utilisation — live</div>
+              <div class="ph-right">
+                <span class="mono" style="font-size:9px;color:var(--text3)">2s interval</span>
+                <div class="tag-btn sec">60s</div>
+                <div class="tag-btn sec">5m</div>
+              </div>
+            </div>
+            <div class="chart-wrap">
+              <div class="chart-legend">
+                <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>GPU util %</div>
+                <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div>CPU %</div>
+              </div>
+              <canvas id="chart" class="metric-canvas" style="width:100%;height:100px;display:block" height="100"></canvas>
+            </div>
+            <div class="metrics-mini">
+              <div class="mm-cell">
+                <div class="mm-key">GPU util</div>
+                <div class="mm-val" id="mm-gpu">—</div>
+                <div class="mm-sub">CUDA kernels active</div>
+                <div class="mm-bar"><div class="mm-fill" id="mm-gpu-b" style="width:0%;background:var(--accent)"></div></div>
+              </div>
+              <div class="mm-cell">
+                <div class="mm-key">CPU util</div>
+                <div class="mm-val" id="mm-cpu">—</div>
+                <div class="mm-sub" id="mm-cpu-sub">— cores</div>
+                <div class="mm-bar"><div class="mm-fill" id="mm-cpu-b" style="width:0%;background:var(--purple)"></div></div>
+              </div>
+              <div class="mm-cell">
+                <div class="mm-key">Temp</div>
+                <div class="mm-val" id="mm-temp">—</div>
+                <div class="mm-sub">Throttle @ 90°C</div>
+                <div class="mm-bar"><div class="mm-fill" id="mm-temp-b" style="width:0%;background:var(--amber)"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Submit job -->
+          <div class="panel">
+            <div class="ph">
+              <div class="ph-title">Submit job</div>
+              <div class="ph-right"><span class="mono" style="font-size:10px;color:var(--text3)">GPU accelerated</span></div>
+            </div>
+            <form class="form-grid" id="job-form" onsubmit="return false">
+              <div class="fg"><div class="flabel">Job name</div><input class="finput" id="job-name" placeholder="llama3-finetune-v3"/></div>
+              <div class="fg"><div class="flabel">Docker image</div>
+                <select class="finput" id="job-image">
+                  <option value="">Loading images…</option>
+                </select>
+              </div>
+              <div class="fg full"><div class="flabel">Entry script + args</div><input class="finput" id="job-script" placeholder="/workspace/train.py --lr 2e-4 --epochs 20 --bf16"/></div>
+              <div class="fg"><div class="flabel">GPU count</div><select class="finput" id="job-gpu"><option value="1">1 GPU</option><option value="99">All GPUs</option><option value="0">No GPU</option></select></div>
+              <div class="fg"><div class="flabel">Priority</div><select class="finput" id="job-priority"><option value="normal">Normal</option><option value="high">High</option><option value="low">Low</option></select></div>
+              <div class="form-footer">
+                <button type="button" class="btn-ghost">Save draft</button>
+                <button type="submit" class="btn-primary" id="job-submit">Queue job →</button>
+              </div>
+            </form>
+          </div>
+
+        </div>
+
+        <!-- RIGHT -->
+        <div style="display:flex;flex-direction:column;gap:14px">
+
+          <!-- Jobs -->
+          <div class="panel">
+            <div class="ph">
+              <div class="ph-title">Active jobs</div>
+              <div class="ph-right"><div class="tag-btn">View all</div></div>
+            </div>
+            <div class="job-list" id="jobList">
+              <div class="empty-state">No jobs yet — submit one on the left.</div>
+            </div>
+          </div>
+
+          <!-- Sessions -->
+          <div class="panel">
+            <div class="ph"><div class="ph-title">Dev sessions</div><div class="ph-right"><div class="tag-btn" id="btn-new-session">+ New</div></div></div>
+            <div id="sessList" data-role="sess-list">
+              <div class="empty-state">No active sessions.</div>
+            </div>
+          </div>
+
+          <!-- Activity -->
+          <div class="panel">
+            <div class="ph"><div class="ph-title">Activity</div></div>
+            <div id="actList">
+              <div class="empty-state">Activity will appear here as jobs run.</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+    <!-- /tab-dashboard -->
+
+    <!-- ============ TAB: JOB HISTORY ============ -->
+    <div class="tab-pane" id="tab-history">
+      <div class="panel">
+        <div class="ph">
+          <div class="ph-title">All jobs</div>
+          <div class="ph-right">
+            <select class="finput" id="hist-filter" style="width:auto;padding:4px 8px">
+              <option value="">all statuses</option>
+              <option value="running">running</option>
+              <option value="queued">queued</option>
+              <option value="done">done</option>
+              <option value="failed">failed</option>
+            </select>
+            <span class="mono" style="font-size:10px;color:var(--text3)" id="hist-count">—</span>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="jtable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Image</th>
+                <th>Status</th>
+                <th>GPU</th>
+                <th>Prio</th>
+                <th>Submitted</th>
+                <th>Duration</th>
+                <th class="t-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="hist-body">
+              <tr><td colspan="9" class="empty-state">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ TAB: MODEL REGISTRY ============ -->
+    <div class="tab-pane" id="tab-models">
+      <div class="panel">
+        <div class="ph">
+          <div class="ph-title">Model registry</div>
+          <div class="ph-right"><span class="mono" style="font-size:10px;color:var(--text3)">/workspace/models</span></div>
+        </div>
+        <div id="models-body">
+          <div class="empty-state">
+            Save model checkpoints to <span class="mono">/workspace/models/&lt;name&gt;/</span><br/>
+            They will appear here once a scanner picks them up. (v0.2)
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ TAB: TEAM ============ -->
+    <div class="tab-pane" id="tab-team">
+      <div class="panel">
+        <div class="ph">
+          <div class="ph-title">Team members</div>
+          <div class="ph-right"><div class="tag-btn" id="btn-invite">+ Invite</div></div>
+        </div>
+        <div id="team-body">
+          <div class="empty-state">Loading team…</div>
+        </div>
+      </div>
+      <div class="panel" style="margin-top:14px">
+        <div class="ph"><div class="ph-title">Plan</div></div>
+        <div style="padding:16px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <div>
+              <div style="font-size:14px;font-weight:800;color:var(--text)">Team Plan</div>
+              <div style="font-size:11px;color:var(--text2);margin-top:2px">Self-hosted · unlimited GPU jobs</div>
+            </div>
+            <button class="btn-ghost" onclick="alert('Settings page is in the sidebar.')">Manage</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    </div> <!-- /route-overview -->
+
+    <!-- ============================================================== -->
+    <!-- ROUTE: SESSIONS (#/sessions)                                    -->
+    <!-- ============================================================== -->
+    <div class="route-view" id="route-sessions">
+      <div class="panel">
+        <div class="ph">
+          <div class="ph-title">Active dev sessions</div>
+          <div class="ph-right"><div class="tag-btn" id="btn-new-session-big">+ New session</div></div>
+        </div>
+        <div data-role="sess-list">
+          <div class="empty-state">No active sessions.</div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ph"><div class="ph-title">How dev sessions work</div></div>
+        <div style="padding:16px;font-size:11px;color:var(--text2);line-height:1.7">
+          Each session launches a fully isolated environment with browser-native VS Code,
+          pre-connected to your shared workspace. Click <span class="mono">↗</span> to open it
+          instantly in a new tab — no setup, no SSH, no local install required.
+          <br/><br/>
+          Use the pre-built <span class="mono">apex/code-server:python</span> or
+          <span class="mono">apex/code-server:pytorch</span> images, or bring your own.
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- ROUTE: METRICS (#/metrics)                                      -->
+    <!-- ============================================================== -->
+    <div class="route-view" id="route-metrics">
+      <div class="panel">
+        <div class="ph">
+          <div class="ph-title">GPU + CPU — live</div>
+          <div class="ph-right"><span class="mono" style="font-size:9px;color:var(--text3)">2s SSE tick</span></div>
+        </div>
+        <div class="chart-wrap">
+          <div class="chart-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--accent)"></div>GPU util %</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--purple)"></div>CPU %</div>
+          </div>
+          <canvas class="metric-canvas" style="width:100%;height:220px;display:block" height="220"></canvas>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ph"><div class="ph-title">Current readings</div></div>
+        <div class="metrics-grid">
+          <div class="mm-cell"><div class="mm-key">GPU util</div>     <div class="mm-val" data-metric="gpu_util">—</div></div>
+          <div class="mm-cell"><div class="mm-key">GPU temp</div>     <div class="mm-val" data-metric="gpu_temp">—</div></div>
+          <div class="mm-cell"><div class="mm-key">GPU power</div>    <div class="mm-val" data-metric="gpu_power_w">—</div></div>
+          <div class="mm-cell"><div class="mm-key">VRAM used</div>    <div class="mm-val" data-metric="vram_used_gb">—</div></div>
+          <div class="mm-cell"><div class="mm-key">VRAM total</div>   <div class="mm-val" data-metric="vram_total_gb">—</div></div>
+          <div class="mm-cell"><div class="mm-key">CPU util</div>     <div class="mm-val" data-metric="cpu_util">—</div></div>
+          <div class="mm-cell"><div class="mm-key">RAM used</div>     <div class="mm-val" data-metric="ram_used_gb">—</div></div>
+          <div class="mm-cell"><div class="mm-key">RAM total</div>    <div class="mm-val" data-metric="ram_total_gb">—</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- ROUTE: IMAGES (#/images)                                        -->
+    <!-- ============================================================== -->
+    <div class="route-view" id="route-images">
+      <div class="panel">
+        <div class="ph">
+          <div class="ph-title">Docker images</div>
+          <div class="ph-right"><span class="mono" style="font-size:10px;color:var(--text3)" id="images-count">—</span></div>
+        </div>
+        <div class="table-wrap">
+          <table class="jtable">
+            <thead><tr><th>Tag</th><th>Image ID</th><th class="t-right">Size</th></tr></thead>
+            <tbody id="images-body"><tr><td colspan="3" class="empty-state">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="ph"><div class="ph-title">Tip</div></div>
+        <div style="padding:14px 16px;font-size:11px;color:var(--text2);line-height:1.7">
+          Apex reads images from your local image registry automatically — no manual push or sync required.
+          Build your training image locally and it will appear here immediately.
+          Pre-built <span class="mono">apex/code-server:python</span> and <span class="mono">apex/code-server:pytorch</span> images are available to get started quickly.
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- ROUTE: AUDIT LOG (#/audit)                                      -->
+    <!-- ============================================================== -->
+    <div class="route-view" id="route-audit">
+      <div class="panel">
+        <div class="ph"><div class="ph-title">Audit log</div></div>
+        <div class="empty-state" style="padding:40px">
+          Audit logging lands in v0.2. All API mutations will be recorded here.
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- ROUTE: SECRETS (#/secrets)                                      -->
+    <!-- ============================================================== -->
+    <div class="route-view" id="route-secrets">
+      <div class="panel">
+        <div class="ph"><div class="ph-title">Secrets</div></div>
+        <div class="empty-state" style="padding:40px">
+          Encrypted secrets store lands in v0.2. For now, pass secrets via environment
+          variables on the host machine.
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- ROUTE: SETTINGS (#/settings)                                    -->
+    <!-- ============================================================== -->
+    <div class="route-view" id="route-settings">
+      <div class="panel">
+        <div class="ph"><div class="ph-title">Platform settings</div></div>
+        <div style="padding:16px">
+          <div class="kv-row"><div class="kv-key">Version</div>           <div class="kv-val">0.1.0</div></div>
+          <div class="kv-row"><div class="kv-key">API base</div>          <div class="kv-val" id="settings-api-base">—</div></div>
+          <div class="kv-row"><div class="kv-key">Workspace path</div>    <div class="kv-val" id="settings-workspace">~/apex-workspace</div></div>
+          <div class="kv-row"><div class="kv-key">GPU</div>                <div class="kv-val" data-metric="gpu_name">—</div></div>
+          <div class="kv-row"><div class="kv-key">Config</div>            <div class="kv-val">~/.apex/config.json</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+  </div>
+</div>
+
+<!-- LOG DRAWER -->
+<div class="log-drawer" id="logDrawer">
+  <div class="log-drawer-header">
+    <div class="log-drawer-title" id="drawerTitle">logs</div>
+    <div class="sbadge sb-run" id="drawerBadge" style="margin-right:6px"><div class="sdot pulse"></div>RUNNING</div>
+    <div class="log-close" onclick="closeLog()">✕</div>
+  </div>
+  <div class="log-body" id="logBody"></div>
+</div>
+
+<!-- SESSION MODAL -->
+<div class="modal-backdrop" id="sessModal">
+  <div class="modal">
+    <div class="modal-title">Launch dev session</div>
+    <div class="fg"><div class="flabel">Docker image</div>
+      <select class="finput" id="sess-image"><option>Loading…</option></select>
+    </div>
+    <div class="fg" style="margin-top:10px"><div class="flabel">Your name</div>
+      <input class="finput" id="sess-user" placeholder="Ajay Kumar"/>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-ghost" onclick="closeSessionModal()">Cancel</button>
+      <button class="btn-primary" id="sess-launch">Launch session</button>
+    </div>
+  </div>
+</div>
+
+<script src="/js/app.js"></script>
+<script src="/js/metrics.js"></script>
+<script src="/js/jobs.js"></script>
+<script src="/js/sessions.js"></script>
+<script src="/js/logs.js"></script>
+</body>
+</html>

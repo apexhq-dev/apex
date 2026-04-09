@@ -1,0 +1,138 @@
+"""Apex CLI — `apex start|stop|status|logs`."""
+from __future__ import annotations
+
+import os
+import sys
+import threading
+import webbrowser
+
+import click
+
+from apex import __version__
+from apex.config import CONFIG
+
+
+def _ping_telemetry() -> None:
+    """Fire-and-forget anonymous install ping. Opt-out via APEX_NO_TELEMETRY=1."""
+    if os.environ.get("APEX_NO_TELEMETRY"):
+        return
+    try:
+        import json
+        import secrets
+        import urllib.request
+        from apex.config import CONFIG_DIR
+
+        id_file = CONFIG_DIR / ".install_id"
+        if not id_file.exists():
+            id_file.write_text(secrets.token_hex(16))
+        install_id = id_file.read_text().strip()
+
+        payload = json.dumps({"v": __version__, "id": install_id}).encode()
+        req = urllib.request.Request(
+            "https://telemetry.tryapex.dev/ping",
+            data=payload,
+            headers={"Content-Type": "application/json"},
+        )
+        urllib.request.urlopen(req, timeout=2)
+    except Exception:
+        pass
+
+
+@click.group(invoke_without_command=False)
+@click.version_option(__version__, prog_name="apex")
+def main() -> None:
+    """Apex — self-hosted ML platform for small AI teams."""
+
+
+@main.command()
+@click.option("--host", default=None, help="Bind host (default from config)")
+@click.option("--port", default=None, type=int, help="Bind port (default from config)")
+@click.option("--workers", default=1, type=int, help="Uvicorn workers")
+@click.option("--no-browser", is_flag=True, help="Don't auto-open browser")
+@click.option("--skip-docker-check", is_flag=True, help="Skip docker daemon check (dev mode)")
+def start(host: str | None, port: int | None, workers: int, no_browser: bool, skip_docker_check: bool) -> None:
+    """Start the Apex platform."""
+    host = host or CONFIG.get("host", "0.0.0.0")
+    port = port or CONFIG.get("port", 7000)
+
+    # 1. Check Docker daemon
+    if not skip_docker_check:
+        try:
+            import docker
+            docker.from_env().ping()
+        except Exception as e:
+            click.secho("✗ Docker daemon not found.", fg="red", bold=True)
+            click.echo(f"  {e}")
+            click.echo("  Please start Docker first, or re-run with --skip-docker-check for dev mode.")
+            sys.exit(1)
+
+    # 2. Init DB
+    from apex.server.db import init_db
+    init_db()
+
+    # 3. Create owner account on first run
+    from apex.server.auth import ensure_owner_account
+    creds = ensure_owner_account()
+    if creds:
+        email, password = creds
+        click.secho("\n=== First-run owner account created ===", fg="cyan", bold=True)
+        click.echo(f"  email:    {email}")
+        click.echo(f"  password: {password}")
+        click.secho("  Save this — it will not be shown again.\n", fg="yellow")
+
+    # 4. Anonymous telemetry ping (opt-out via APEX_NO_TELEMETRY=1)
+    threading.Thread(target=_ping_telemetry, daemon=True).start()
+
+    # 5. Start monitor collector thread
+    from apex.monitor.collector import start_collector
+    start_collector()
+
+    # 6. Start scheduler worker thread
+    from apex.scheduler.worker import start_worker
+    start_worker()
+
+    # 7. Launch Uvicorn
+    import uvicorn
+    from apex.server.app import create_app
+    app = create_app()
+
+    click.secho(f"\n▲ Apex is running at http://localhost:{port}", fg="cyan", bold=True)
+
+    if not no_browser:
+        try:
+            threading.Timer(1.0, lambda: webbrowser.open(f"http://localhost:{port}")).start()
+        except Exception:
+            pass
+
+    uvicorn.run(app, host=host, port=port, log_level="info", workers=workers if workers > 1 else None)
+
+
+@main.command()
+def stop() -> None:
+    """Stop the Apex platform."""
+    click.echo("Apex runs in the foreground — press Ctrl+C in the terminal where `apex start` was run.")
+
+
+@main.command()
+def status() -> None:
+    """Show Apex status."""
+    import urllib.request
+    import json
+    port = CONFIG.get("port", 7000)
+    try:
+        with urllib.request.urlopen(f"http://localhost:{port}/api/health", timeout=1) as r:
+            data = json.loads(r.read().decode())
+        click.secho(f"● running on :{port}  {data}", fg="green")
+    except Exception:
+        click.secho(f"○ not running (no response on :{port})", fg="red")
+
+
+@main.command()
+@click.option("--tail", default=100, type=int)
+def logs(tail: int) -> None:
+    """Tail recent platform logs (stub)."""
+    click.echo(f"(tail={tail}) — platform logs are written to stdout; pipe `apex start` output to a file.")
+
+
+if __name__ == "__main__":
+    main()

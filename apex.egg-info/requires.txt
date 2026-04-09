@@ -1,0 +1,10 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+psutil>=5.9
+nvidia-ml-py>=12.0
+docker>=7.0
+sse-starlette>=2.0
+python-jose[cryptography]>=3.3
+bcrypt>=4.0
+python-multipart>=0.0.9
+click>=8.1

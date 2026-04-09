@@ -1,0 +1,53 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "apex"
+version = "0.1.0"
+description = "Self-hosted ML platform for small AI teams. One install, full job lifecycle, real-time GPU monitoring."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [{ name = "Apex contributors" }]
+keywords = ["mlops", "gpu", "self-hosted", "job-scheduler", "pytorch", "docker"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: System :: Distributed Computing",
+]
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "psutil>=5.9",
+    "nvidia-ml-py>=12.0",
+    "docker>=7.0",
+    "sse-starlette>=2.0",
+    "python-jose[cryptography]>=3.3",
+    "bcrypt>=4.0",
+    "python-multipart>=0.0.9",
+    "click>=8.1",
+]
+
+[project.scripts]
+apex = "apex.cli:main"
+
+[tool.setuptools]
+packages = [
+    "apex",
+    "apex.server",
+    "apex.server.routes",
+    "apex.monitor",
+    "apex.scheduler",
+]
+
+[tool.setuptools.package-data]
+apex = ["static/**/*"]
