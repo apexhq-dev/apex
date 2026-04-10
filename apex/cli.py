@@ -107,6 +107,32 @@ def start(host: str | None, port: int | None, workers: int, no_browser: bool, sk
     uvicorn.run(app, host=host, port=port, log_level="info", workers=workers if workers > 1 else None)
 
 
+@main.command("build-images")
+@click.option("--pytorch", is_flag=True, help="Also build the PyTorch/CUDA image (~8 GB)")
+def build_images(pytorch: bool) -> None:
+    """Build the bundled base images locally (one-time setup)."""
+    import pathlib
+    import subprocess
+
+    docker_dir = pathlib.Path(__file__).parent / "docker"
+
+    images = [("apex/code-server:python", "python.Dockerfile", "~2 min")]
+    if pytorch:
+        images.append(("apex/code-server:pytorch", "pytorch.Dockerfile", "~15 min, ~8 GB"))
+
+    for tag, dockerfile, estimate in images:
+        click.echo(f"\nBuilding {tag}  ({estimate}) ...")
+        result = subprocess.run(
+            ["docker", "build", "-t", tag, "-f", str(docker_dir / dockerfile), str(docker_dir)],
+        )
+        if result.returncode != 0:
+            click.secho(f"✗ Failed to build {tag}", fg="red", bold=True)
+            sys.exit(1)
+        click.secho(f"✓ {tag}", fg="green", bold=True)
+
+    click.secho("\nDone. Run `apex start` to launch the platform.", fg="cyan")
+
+
 @main.command()
 def stop() -> None:
     """Stop the Apex platform."""

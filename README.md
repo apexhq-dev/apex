@@ -59,16 +59,14 @@ Log in with those credentials. The password is only shown once.
 - **NVIDIA GPU** (optional — Apex degrades gracefully to CPU-only if no GPU is present)
 - **Linux or macOS** (tested on Ubuntu 22.04 + macOS 14)
 
-### Submit your first job
-
-First, build the base image (one-time, ~2 min):
+### Build the base images (one-time)
 
 ```bash
-git clone https://github.com/apexhq-dev/apex && cd apex
-docker build -t apex/code-server:python -f docker/python.Dockerfile docker/
+apex build-images                # Python image (~2 min)
+apex build-images --pytorch      # + PyTorch/CUDA image (~15 min, ~8 GB)
 ```
 
-Then submit a job:
+### Submit your first job
 
 ```bash
 curl -X POST http://localhost:7000/api/jobs \
@@ -83,6 +81,25 @@ curl -X POST http://localhost:7000/api/jobs \
 ```
 
 Or use the UI — click **+ Submit job** on the dashboard.
+
+### Custom images
+
+You can use any Docker image for training jobs:
+
+```bash
+docker build -t my-team/training-image .
+# then specify my-team/training-image when submitting a job
+```
+
+For **dev sessions** (browser VS Code), the image must have `code-server` installed.
+Build on top of the official base image:
+
+```dockerfile
+FROM apex/code-server:python
+RUN pip install torch transformers
+```
+
+Or use `codercom/code-server:latest` directly.
 
 ### Train CIFAR-10 in 60 seconds
 

@@ -50,4 +50,4 @@ packages = [
 ]
 
 [tool.setuptools.package-data]
-apex = ["static/**/*"]
+apex = ["static/**/*", "docker/*"]
