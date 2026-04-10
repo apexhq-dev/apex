@@ -47,7 +47,7 @@ Dynamic: license-file
   <a href="https://github.com/apexhq-dev/apex/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="License"/></a>
   <a href="https://pypi.org/project/apex/"><img src="https://img.shields.io/badge/pypi-apex-00d9f5" alt="PyPI"/></a>
   <a href="https://python.org"><img src="https://img.shields.io/badge/python-3.10+-blue" alt="Python"/></a>
-  <a href="https://discord.gg/apex"><img src="https://img.shields.io/badge/discord-join-8b5cf6" alt="Discord"/></a>
+  <a href="https://discord.gg/RFpDyhdpWJ"><img src="https://img.shields.io/badge/discord-join-8b5cf6" alt="Discord"/></a>
 </p>
 
 ---
@@ -250,7 +250,7 @@ The frontend is plain HTML/CSS/JS in `apex/static/` — edit and refresh, no bui
 
 ## Community
 
-- **Discord** — [discord.gg/apex](https://discord.gg/apex)
+- **Discord** — [discord.gg/RFpDyhdpWJ](https://discord.gg/RFpDyhdpWJ)
 - **Twitter** — [@apexhq](https://twitter.com/apexhq)
 - **GitHub Issues** — for bugs and feature requests
 - **GitHub Discussions** — for questions and ideas

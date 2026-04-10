@@ -18,7 +18,7 @@ You already own a workstation with an L4, 4090, or A6000.
 I built Apex so you can stop paying cloud tax and start using the
 hardware sitting on your desk.
 
-pip install apex && apex start
+pip install apex-ml && apex start
 
 [attach hero.mp4]
 ```
@@ -188,7 +188,7 @@ Why: technical credibility for the HN/dev crowd. Ends with the
 ```
 If you run a small AI/ML team and you own a GPU, give it a shot:
 
-→ pip install apex && apex start
+→ pip install apex-ml && apex start
 → GitHub: github.com/apexhq-dev/apex
 → HN thread: [LINK]
 → Docs + install guide: tryapex.dev
@@ -202,7 +202,7 @@ Feedback welcome. I'm in the HN thread for the next ~6 hours.
 
 - Tweet 1: **T+0** (main post)
 - Tweets 2–10: reply chain, 30 seconds between each (so Twitter threads them but doesn't rate-limit)
-- Pin the thread to the @apexhq profile
+- Pin the thread to the @apexhq_dev profile
 - Tweet 1 also posts to LinkedIn separately with the same text + video
 
 ## Tags + people to @ (tweet 10)

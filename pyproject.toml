@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "apex"
+name = "apex-ml"
 version = "0.1.0"
 description = "Self-hosted ML platform for small AI teams. One install, full job lifecycle, real-time GPU monitoring."
 readme = "README.md"

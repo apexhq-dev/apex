@@ -162,7 +162,7 @@ I called it **Apex**. It's open source, Apache 2.0, and it takes one pip
 install:
 
 ```bash
-pip install apex && apex start
+pip install apex-ml && apex start
 ```
 
 What you get:
@@ -184,7 +184,7 @@ tier is free forever for solo devs, $29/month flat for teams up to 8.
 
 **GitHub:** [github.com/apexhq-dev/apex](https://github.com/apexhq-dev/apex)
 **Docs:** [tryapex.dev](https://tryapex.dev)
-**Discord:** [discord.gg/apex](https://discord.gg/apex)
+**Discord:** [discord.gg/RFpDyhdpWJ](https://discord.gg/RFpDyhdpWJ)
 
 And if you've got a horror story about your own cloud GPU bill, I want to
 hear it. DM me or drop it in the Discord. I'm collecting them for a follow-up
@@ -201,7 +201,7 @@ post: *"The cloud bills I saw this week."*
 
 ## Cross-post targets
 
-- **Medium** (main publication — `@apexhq` or a personal account)
+- **Medium** (main publication — `@apexhq_dev` or a personal account)
 - **dev.to** (same content, different tags: `#mlops`, `#python`, `#opensource`)
 - **HashNode** (same content)
 - **Substack** (if you have an ML newsletter presence)

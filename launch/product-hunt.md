@@ -86,7 +86,7 @@ their hardware.
 
 👉 github.com/apexhq-dev/apex
 👉 tryapex.dev
-👉 discord.gg/apex
+👉 discord.gg/RFpDyhdpWJ
 ```
 
 ## Maker bio (reuse across the day's comments)
@@ -158,4 +158,4 @@ Share-friendly URLs for the thread:
 - https://www.producthunt.com/posts/apex — the listing (get the real slug after submit)
 - https://github.com/apexhq-dev/apex — for the engineers
 - https://tryapex.dev — for the founders/skimmers
-- https://discord.gg/apex — for the community builders
+- https://discord.gg/RFpDyhdpWJ — for the community builders

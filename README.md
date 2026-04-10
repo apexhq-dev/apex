@@ -12,9 +12,9 @@
 <p align="center">
   <a href="https://tryapex.dev"><img src="https://img.shields.io/badge/website-tryapex.dev-000000" alt="Website"/></a>
   <a href="https://github.com/apexhq-dev/apex/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-Apache%202.0-blue" alt="License"/></a>
-  <a href="https://pypi.org/project/apex/"><img src="https://img.shields.io/badge/pypi-apex-00d9f5" alt="PyPI"/></a>
+  <a href="https://pypi.org/project/apex-ml/"><img src="https://img.shields.io/badge/pypi-apex--ml-00d9f5" alt="PyPI"/></a>
   <a href="https://python.org"><img src="https://img.shields.io/badge/python-3.10+-blue" alt="Python"/></a>
-  <a href="https://discord.gg/apex"><img src="https://img.shields.io/badge/discord-join-8b5cf6" alt="Discord"/></a>
+  <a href="https://discord.gg/RFpDyhdpWJ"><img src="https://img.shields.io/badge/discord-join-8b5cf6" alt="Discord"/></a>
 </p>
 
 ---
@@ -35,11 +35,22 @@ browser-native VS Code — all running on a single workstation.
 ## Quickstart
 
 ```bash
-pip install apex
+pip install apex-ml
 apex start
 ```
 
 That's it. Your browser opens to `http://localhost:7000`.
+
+On first run, Apex prints a one-time login to the terminal:
+
+```
+=== First-run owner account created ===
+email:    owner@apex.local
+password: <random>
+Save this — it will not be shown again.
+```
+
+Log in with those credentials. The password is only shown once.
 
 ### Requirements
 
@@ -49,6 +60,15 @@ That's it. Your browser opens to `http://localhost:7000`.
 - **Linux or macOS** (tested on Ubuntu 22.04 + macOS 14)
 
 ### Submit your first job
+
+First, build the base image (one-time, ~2 min):
+
+```bash
+git clone https://github.com/apexhq-dev/apex && cd apex
+docker build -t apex/code-server:python -f docker/python.Dockerfile docker/
+```
+
+Then submit a job:
 
 ```bash
 curl -X POST http://localhost:7000/api/jobs \
@@ -182,7 +202,6 @@ Apex reads `~/.apex/config.json` on startup. Defaults:
 
 ## API
 
-All routes under `/api/*`. Full OpenAPI spec at `http://localhost:7000/api/docs`.
 
 | Route | Method | Description |
 |---|---|---|
@@ -218,7 +237,7 @@ The frontend is plain HTML/CSS/JS in `apex/static/` — edit and refresh, no bui
 ## Community
 
 - **Website** — [tryapex.dev](https://tryapex.dev)
-- **Discord** — [discord.gg/apex](https://discord.gg/apex)
-- **Twitter** — [@apexhq](https://twitter.com/apexhq)
+- **Discord** — [discord.gg/RFpDyhdpWJ](https://discord.gg/RFpDyhdpWJ)
+- **Twitter** — [@apexhq_dev](https://twitter.com/apexhq_dev)
 - **GitHub Issues** — for bugs and feature requests
 - **GitHub Discussions** — for questions and ideas
