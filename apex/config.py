@@ -43,6 +43,11 @@ def load_config() -> dict[str, Any]:
     if changed:
         CONFIG_PATH.write_text(json.dumps(data, indent=2))
 
+    # Env var override — useful for NFS mounts or external SSDs configured at
+    # the system level (e.g. export APEX_WORKSPACE=/mnt/bigdisk/apex-workspace)
+    if os.environ.get("APEX_WORKSPACE"):
+        data["workspace_path"] = os.path.expanduser(os.environ["APEX_WORKSPACE"])
+
     # Ensure workspace dir exists
     Path(data["workspace_path"]).mkdir(parents=True, exist_ok=True)
     return data

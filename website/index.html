@@ -310,6 +310,20 @@ footer{padding:60px 24px 40px;border-top:1px solid var(--border);margin-top:80px
         </div>
       </div>
 
+      <div class="feature">
+        <div class="feature-body" style="padding:32px 24px">
+          <h3>Shared workspace for your whole team</h3>
+          <p>Mount a NAS or network drive at the OS level, then point Apex at it with one command. Every job and dev session that runs on the machine sees the same files — no manual syncing, no copying checkpoints around.</p>
+          <div style="margin-top:18px;padding:14px 16px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;font-family:'JetBrains Mono',monospace;font-size:12px;line-height:1.8;color:var(--text2)">
+            <span style="color:var(--text3)"># mount once at the OS level</span><br/>
+            sudo mount -t nfs 192.168.1.10:/shared /mnt/nas<br/>
+            <br/>
+            <span style="color:var(--text3)"># tell Apex to use it</span><br/>
+            <span style="color:var(--accent)">apex config set workspace /mnt/nas/apex</span>
+          </div>
+        </div>
+      </div>
+
     </div>
   </div>
 </section>

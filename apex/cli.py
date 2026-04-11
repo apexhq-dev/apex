@@ -133,6 +133,63 @@ def build_images(pytorch: bool) -> None:
     click.secho("\nDone. Run `apex start` to launch the platform.", fg="cyan")
 
 
+@main.group()
+def config() -> None:
+    """View or update Apex configuration."""
+
+
+@config.command("show")
+def config_show() -> None:
+    """Show current configuration."""
+    from apex.config import CONFIG_PATH
+    display_keys = ("workspace_path", "host", "port", "session_port_range")
+    for k in display_keys:
+        click.echo(f"  {k}: {CONFIG.get(k)}")
+    click.echo(f"\n  config file: {CONFIG_PATH}")
+
+
+@config.command("set")
+@click.argument("key", metavar="KEY")
+@click.argument("value", metavar="VALUE")
+def config_set(key: str, value: str) -> None:
+    """Persist a config value (e.g. apex config set workspace /mnt/ssd/apex)."""
+    import json
+    from apex.config import CONFIG_PATH, CONFIG_DIR
+
+    # normalise alias
+    if key == "workspace":
+        key = "workspace_path"
+
+    if key not in {"workspace_path", "port", "host"}:
+        click.secho(f"✗ Unknown key '{key}'. Settable keys: workspace, port, host", fg="red")
+        raise SystemExit(1)
+
+    if key == "workspace_path":
+        import pathlib
+        path = pathlib.Path(value).expanduser().resolve()
+        if not path.exists():
+            click.secho(f"  Warning: path does not exist yet — it will be created on next start.", fg="yellow")
+        value = str(path)
+
+    if key == "port":
+        try:
+            value = int(value)  # type: ignore[assignment]
+        except ValueError:
+            click.secho("✗ port must be an integer", fg="red")
+            raise SystemExit(1)
+
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    try:
+        data = json.loads(CONFIG_PATH.read_text()) if CONFIG_PATH.exists() else {}
+    except json.JSONDecodeError:
+        data = {}
+    data[key] = value
+    CONFIG_PATH.write_text(json.dumps(data, indent=2))
+    click.secho(f"✓ {key} = {value}", fg="green")
+    if key == "workspace_path":
+        click.echo("  Restart `apex start` for the change to take effect.")
+
+
 @main.command()
 def stop() -> None:
     """Stop the Apex platform."""
