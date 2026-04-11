@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "apex-ml"
-version = "0.1.0"
+version = "0.1.1"
 description = "Self-hosted ML platform for small AI teams. One install, full job lifecycle, real-time GPU monitoring."
 readme = "README.md"
 requires-python = ">=3.10"

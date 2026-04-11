@@ -64,8 +64,10 @@ def _loop() -> None:
     while not _stop.is_set():
         try:
             job = queue.get_next_queued_job()
-            if job and not queue.is_gpu_busy():
-                _run_job(job)
+            if job:
+                needs_gpu = int(job.get("gpu_count") or 0) > 0
+                if not needs_gpu or not queue.is_gpu_busy():
+                    _run_job(job)
         except Exception:
             pass
         _stop.wait(POLL_INTERVAL)

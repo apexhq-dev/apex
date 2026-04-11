@@ -42,7 +42,12 @@ def list_jobs(status: str | None = None, limit: int = 50, offset: int = 0) -> li
     if status:
         sql += " WHERE status = ?"
         params.append(status)
-    sql += " ORDER BY submitted_at DESC LIMIT ? OFFSET ?"
+    # Queued jobs are sorted by dispatch order (priority → submission time) so the
+    # list reflects the actual run order.  All other statuses sort newest-first.
+    if status == "queued":
+        sql += f" ORDER BY {_PRIORITY_ORDER}, submitted_at ASC LIMIT ? OFFSET ?"
+    else:
+        sql += " ORDER BY submitted_at DESC LIMIT ? OFFSET ?"
     params.extend([limit, offset])
     with get_db() as conn:
         rows = conn.execute(sql, params).fetchall()

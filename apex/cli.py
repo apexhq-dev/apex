@@ -78,9 +78,11 @@ def start(host: str | None, port: int | None, workers: int, no_browser: bool, sk
         click.secho("\n=== First-run owner account created ===", fg="cyan", bold=True)
         click.echo(f"  email:    {email}")
         click.echo(f"  password: {password}")
-        click.secho("  Save this — it will not be shown again.\n", fg="yellow")
+        click.secho("  Save this — it will not be shown again.", fg="yellow")
 
     # 4. Anonymous telemetry ping (opt-out via APEX_NO_TELEMETRY=1)
+    if not os.environ.get("APEX_NO_TELEMETRY"):
+        click.echo("  Telemetry: anonymous usage pings are enabled.  Set APEX_NO_TELEMETRY=1 to opt out.\n")
     threading.Thread(target=_ping_telemetry, daemon=True).start()
 
     # 5. Start monitor collector thread
@@ -94,9 +96,23 @@ def start(host: str | None, port: int | None, workers: int, no_browser: bool, sk
     # 7. Launch Uvicorn
     import uvicorn
     from apex.server.app import create_app
+    from apex.config import CONFIG_DIR
+
     app = create_app()
 
+    # Write PID file so `apex stop` can signal this process cleanly.
+    pid_path = CONFIG_DIR / "apex.pid"
+    log_path = CONFIG_DIR / "apex.log"
+    try:
+        pid_path.write_text(str(os.getpid()))
+    except Exception:
+        pass
+
+    import atexit
+    atexit.register(lambda: pid_path.unlink(missing_ok=True))
+
     click.secho(f"\n▲ Apex is running at http://localhost:{port}", fg="cyan", bold=True)
+    click.echo(f"  Logs: {log_path}  (apex logs --tail 100)\n")
 
     if not no_browser:
         try:
@@ -104,7 +120,45 @@ def start(host: str | None, port: int | None, workers: int, no_browser: bool, sk
         except Exception:
             pass
 
-    uvicorn.run(app, host=host, port=port, log_level="info", workers=workers if workers > 1 else None)
+    # Route uvicorn logs to both stdout and ~/.apex/apex.log
+    log_config = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {
+            "default": {
+                "()": "uvicorn.logging.DefaultFormatter",
+                "fmt": "%(levelprefix)s %(message)s",
+                "use_colors": True,
+            },
+            "file": {"format": "%(asctime)s %(levelname)s %(message)s"},
+        },
+        "handlers": {
+            "default": {
+                "class": "logging.StreamHandler",
+                "formatter": "default",
+                "stream": "ext://sys.stderr",
+            },
+            "file": {
+                "class": "logging.FileHandler",
+                "formatter": "file",
+                "filename": str(log_path),
+            },
+        },
+        "loggers": {
+            "uvicorn": {"handlers": ["default", "file"], "level": "INFO", "propagate": False},
+            "uvicorn.error": {"level": "INFO"},
+            "uvicorn.access": {"handlers": ["default", "file"], "level": "INFO", "propagate": False},
+        },
+    }
+
+    uvicorn.run(
+        app,
+        host=host,
+        port=port,
+        log_level="info",
+        workers=workers if workers > 1 else None,
+        log_config=log_config,
+    )
 
 
 @main.command("build-images")
@@ -160,8 +214,9 @@ def config_set(key: str, value: str) -> None:
     if key == "workspace":
         key = "workspace_path"
 
-    if key not in {"workspace_path", "port", "host"}:
-        click.secho(f"✗ Unknown key '{key}'. Settable keys: workspace, port, host", fg="red")
+    _SETTABLE = {"workspace_path", "port", "host", "session_port_range"}
+    if key not in _SETTABLE:
+        click.secho(f"✗ Unknown key '{key}'. Settable keys: workspace, port, host, session_port_range", fg="red")
         raise SystemExit(1)
 
     if key == "workspace_path":
@@ -178,6 +233,22 @@ def config_set(key: str, value: str) -> None:
             click.secho("✗ port must be an integer", fg="red")
             raise SystemExit(1)
 
+    if key == "session_port_range":
+        import re
+        parts = re.split(r"[\s,]+", value.strip())
+        if len(parts) != 2:
+            click.secho("✗ session_port_range requires two integers, e.g. 'apex config set session_port_range 8080,8200'", fg="red")
+            raise SystemExit(1)
+        try:
+            lo, hi = int(parts[0]), int(parts[1])
+        except ValueError:
+            click.secho("✗ session_port_range values must be integers", fg="red")
+            raise SystemExit(1)
+        if lo >= hi:
+            click.secho("✗ session_port_range start must be less than end", fg="red")
+            raise SystemExit(1)
+        value = [lo, hi]  # type: ignore[assignment]
+
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     try:
         data = json.loads(CONFIG_PATH.read_text()) if CONFIG_PATH.exists() else {}
@@ -193,7 +264,25 @@ def config_set(key: str, value: str) -> None:
 @main.command()
 def stop() -> None:
     """Stop the Apex platform."""
-    click.echo("Apex runs in the foreground — press Ctrl+C in the terminal where `apex start` was run.")
+    import signal
+    from apex.config import CONFIG_DIR
+
+    pid_path = CONFIG_DIR / "apex.pid"
+    if not pid_path.exists():
+        click.echo("Apex does not appear to be running (no PID file found at ~/.apex/apex.pid).")
+        click.echo("If it is running, press Ctrl+C in the terminal where `apex start` was run.")
+        return
+    try:
+        pid = int(pid_path.read_text().strip())
+        os.kill(pid, signal.SIGTERM)
+        pid_path.unlink(missing_ok=True)
+        click.secho(f"✓ Sent SIGTERM to apex process (PID {pid})", fg="green")
+    except ProcessLookupError:
+        pid_path.unlink(missing_ok=True)
+        click.echo("Apex process not found — it may have already stopped.")
+    except Exception as e:
+        click.secho(f"✗ Failed to stop: {e}", fg="red")
+        click.echo("  Press Ctrl+C in the terminal where `apex start` was run.")
 
 
 @main.command()
@@ -211,10 +300,19 @@ def status() -> None:
 
 
 @main.command()
-@click.option("--tail", default=100, type=int)
+@click.option("--tail", default=100, type=int, help="Number of lines to show")
 def logs(tail: int) -> None:
-    """Tail recent platform logs (stub)."""
-    click.echo(f"(tail={tail}) — platform logs are written to stdout; pipe `apex start` output to a file.")
+    """Tail recent platform logs from ~/.apex/apex.log."""
+    from apex.config import CONFIG_DIR
+
+    log_path = CONFIG_DIR / "apex.log"
+    if not log_path.exists():
+        click.echo("No log file found — logs are written to ~/.apex/apex.log when `apex start` is run.")
+        click.echo("If apex is already running without a log file, restart it to begin logging.")
+        return
+    lines = log_path.read_text(errors="replace").splitlines()
+    for line in lines[-tail:]:
+        click.echo(line)
 
 
 if __name__ == "__main__":
