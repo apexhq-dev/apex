@@ -143,9 +143,31 @@ R.loadMe = async function() {
     const name = me.display_name || me.email || 'RW';
     const initials = name.split(/\s+/).map(s=>s[0]).filter(Boolean).slice(0,2).join('').toUpperCase() || 'RW';
     av.textContent = initials;
+    document.getElementById('user-menu-name').textContent = me.display_name || me.email || '—';
+    document.getElementById('user-menu-email').textContent = me.email || '—';
     if (R.activeTab === 'team' && window.renderTeam) window.renderTeam();
   } catch {}
 };
+
+// ---- User menu (avatar dropdown) ----
+(function() {
+  const av = document.getElementById('avatar');
+  const menu = document.getElementById('user-menu');
+
+  av.addEventListener('click', function(e) {
+    e.stopPropagation();
+    menu.classList.toggle('open');
+  });
+
+  document.addEventListener('click', function() {
+    menu.classList.remove('open');
+  });
+
+  document.getElementById('user-menu-signout').addEventListener('click', function() {
+    localStorage.removeItem('apex_token');
+    location.reload();
+  });
+})();
 
 // ---- Page tabs (Dashboard / Job history / Model registry / Team) ----
 R.activeTab = 'dashboard';
