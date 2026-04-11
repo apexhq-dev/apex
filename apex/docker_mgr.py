@@ -147,6 +147,8 @@ def run_job_container(job_id: int, image: str, command: str, gpu_count: int) -> 
         "command": command,
         "detach": True,
         "volumes": {workspace: {"bind": "/workspace", "mode": "rw"}},
+        "working_dir": "/workspace",
+        "shm_size": "16g",
     }
     create_kwargs.update(_gpu_kwargs(gpu_count))
 
@@ -173,6 +175,7 @@ def run_session_container(session_id: int, image: str, port: int) -> str:
         detach=True,
         ports={"8080/tcp": port},
         volumes={workspace: {"bind": "/workspace", "mode": "rw"}},
+        **_gpu_kwargs(99),  # request all available GPUs (count=-1)
     )
     return container.id
 
