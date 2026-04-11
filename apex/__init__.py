@@ -1,3 +1,3 @@
 """Apex — self-hosted ML platform for small AI teams."""
 
-__version__ = "0.1.2"
+__version__ = "0.1.3"
