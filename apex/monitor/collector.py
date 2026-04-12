@@ -30,9 +30,22 @@ _started = False
 _stop = threading.Event()
 
 
+def _get_running_job_id() -> int | None:
+    """Return the ID of the currently running GPU job, if any."""
+    try:
+        with get_db() as conn:
+            row = conn.execute(
+                "SELECT id FROM jobs WHERE status = 'running' AND gpu_count > 0 ORDER BY started_at DESC LIMIT 1"
+            ).fetchone()
+        return row[0] if row else None
+    except Exception:
+        return None
+
+
 def _sample_once() -> None:
     gpu = get_gpu_metrics()
     cpu = get_cpu_metrics()
+    job_id = _get_running_job_id()
     merged = {**gpu, **cpu, "ts": datetime.utcnow().isoformat(timespec="seconds")}
     with _lock:
         current_metrics.update(merged)
@@ -42,11 +55,12 @@ def _sample_once() -> None:
             conn.execute(
                 """
                 INSERT INTO metrics_history
-                  (gpu_util, vram_used, vram_total, gpu_temp, gpu_power,
+                  (job_id, gpu_util, vram_used, vram_total, gpu_temp, gpu_power,
                    cpu_util, ram_used, ram_total)
-                VALUES (?,?,?,?,?,?,?,?)
+                VALUES (?,?,?,?,?,?,?,?,?)
                 """,
                 (
+                    job_id,
                     gpu.get("gpu_util"),
                     gpu.get("vram_used_gb"),
                     gpu.get("vram_total_gb"),

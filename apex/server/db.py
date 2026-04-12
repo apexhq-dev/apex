@@ -19,6 +19,9 @@ CREATE TABLE IF NOT EXISTS jobs (
   container_id TEXT,
   exit_code    INTEGER,
   error_msg    TEXT,
+  max_retries  INTEGER DEFAULT 0,
+  retry_count  INTEGER DEFAULT 0,
+  depends_on   TEXT,
   submitted_by TEXT,
   submitted_at TEXT DEFAULT (datetime('now')),
   started_at   TEXT,
@@ -48,6 +51,7 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS metrics_history (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
   ts         TEXT DEFAULT (datetime('now')),
+  job_id     INTEGER,
   gpu_util   REAL,
   vram_used  REAL,
   vram_total REAL,
@@ -65,10 +69,35 @@ CREATE INDEX IF NOT EXISTS idx_metrics_ts       ON metrics_history(ts);
 """
 
 
+_MIGRATIONS = [
+    # v0.2.0: job retries
+    ("max_retries", "ALTER TABLE jobs ADD COLUMN max_retries INTEGER DEFAULT 0"),
+    ("retry_count", "ALTER TABLE jobs ADD COLUMN retry_count INTEGER DEFAULT 0"),
+    # v0.2.0: per-job GPU history
+    ("metrics_job_id", "ALTER TABLE metrics_history ADD COLUMN job_id INTEGER"),
+    # v0.2.0: job dependencies
+    ("depends_on", "ALTER TABLE jobs ADD COLUMN depends_on TEXT"),
+]
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    """Add columns that don't exist yet (idempotent)."""
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(jobs)").fetchall()}
+    existing_metrics = {row[1] for row in conn.execute("PRAGMA table_info(metrics_history)").fetchall()}
+    all_existing = existing | existing_metrics
+    for col_name, sql in _MIGRATIONS:
+        if col_name not in all_existing:
+            try:
+                conn.execute(sql)
+            except sqlite3.OperationalError:
+                pass
+
+
 def init_db() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(DB_PATH) as conn:
         conn.executescript(SCHEMA)
+        _migrate(conn)
         conn.commit()
 
 

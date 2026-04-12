@@ -227,4 +227,19 @@ document.addEventListener('DOMContentLoaded', () => {
       if (window.R && R.openInvitePrompt) R.openInvitePrompt();
     });
   }
+
+  // Fetch plan info and update sidebar card dynamically
+  R.api('/users/plan').then(plan => {
+    const tierEl = document.getElementById('plan-tier-label');
+    const descEl = document.getElementById('plan-desc-label');
+    const btnEl  = document.getElementById('btn-plan-invite');
+    if (!tierEl) return;
+    tierEl.textContent = (plan.name || 'Free').toUpperCase() + ' PLAN';
+    descEl.textContent = plan.seats_used + ' of ' + plan.seats_limit + ' seat' + (plan.seats_limit > 1 ? 's' : '');
+    if (plan.plan === 'team') {
+      btnEl.textContent = 'Invite members →';
+    } else {
+      btnEl.textContent = plan.seats_used >= plan.seats_limit ? 'Upgrade →' : 'Invite members →';
+    }
+  }).catch(() => {});
 });
