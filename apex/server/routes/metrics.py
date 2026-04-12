@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 from typing import Any, AsyncGenerator
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sse_starlette.sse import EventSourceResponse
 
 from apex.monitor.collector import snapshot
@@ -47,6 +47,9 @@ def job_metrics(
 ) -> list[dict[str, Any]]:
     """Return GPU/CPU metrics history for a specific job."""
     with get_db() as conn:
+        job = conn.execute("SELECT id FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        if not job:
+            raise HTTPException(404, "job not found")
         rows = conn.execute(
             "SELECT ts, gpu_util, vram_used AS vram_used_gb, vram_total AS vram_total_gb, "
             "gpu_temp, gpu_power AS gpu_power_w, cpu_util, ram_used AS ram_used_gb, ram_total AS ram_total_gb "

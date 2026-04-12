@@ -90,13 +90,6 @@ def current_user(
         return {"id": 0, "email": "anonymous", "display_name": "Anonymous", "role": "owner"}
 
     if creds is None:
-        # Single-user convenience: if there is exactly one account (the auto-created
-        # owner) and no login page exists yet, return that owner rather than 401.
-        with get_db() as conn:
-            if n == 1:
-                row = conn.execute("SELECT * FROM users LIMIT 1").fetchone()
-                if row:
-                    return row_to_dict(row)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="missing bearer token",

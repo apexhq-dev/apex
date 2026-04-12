@@ -51,6 +51,8 @@ def _run_job(job: dict) -> None:
         # docker_mgr already returns clean messages (e.g. "Docker image not found: …"),
         # just pass them through to the user.
         queue.mark_failed(job_id, str(e))
+        # Retry if retries are configured (e.g. transient Docker errors)
+        queue.requeue_for_retry(job_id)
         return
 
     queue.mark_running(job_id, container_id)
@@ -66,14 +68,14 @@ def _run_job(job: dict) -> None:
 def _loop() -> None:
     while not _stop.is_set():
         try:
-            job = queue.get_next_queued_job()
-            if job:
+            candidates = queue.get_queued_jobs()
+            for job in candidates:
                 if not queue.are_dependencies_met(job):
-                    pass  # dependencies not done yet — skip this tick
-                elif int(job.get("gpu_count") or 0) > 0 and queue.is_gpu_busy():
-                    pass  # GPU busy — wait
-                else:
-                    _run_job(job)
+                    continue  # deps not done — try next job
+                if int(job.get("gpu_count") or 0) > 0 and queue.is_gpu_busy():
+                    continue  # GPU busy — try next job
+                _run_job(job)
+                break  # launched one job this tick
         except Exception:
             pass
         _stop.wait(POLL_INTERVAL)
