@@ -214,9 +214,9 @@ def config_set(key: str, value: str) -> None:
     if key == "workspace":
         key = "workspace_path"
 
-    _SETTABLE = {"workspace_path", "port", "host", "session_port_range"}
+    _SETTABLE = {"workspace_path", "port", "host", "session_port_range", "license_key"}
     if key not in _SETTABLE:
-        click.secho(f"✗ Unknown key '{key}'. Settable keys: workspace, port, host, session_port_range", fg="red")
+        click.secho(f"✗ Unknown key '{key}'. Settable keys: workspace, port, host, session_port_range, license_key", fg="red")
         raise SystemExit(1)
 
     if key == "workspace_path":
@@ -262,6 +262,33 @@ def config_set(key: str, value: str) -> None:
 
 
 @main.command()
+@click.argument("license_key")
+def activate(license_key: str) -> None:
+    """Activate a Team license key (from tryapex.dev purchase)."""
+    from apex.license import activate as do_activate
+    click.echo(f"Activating license key...")
+    try:
+        data = do_activate(license_key)
+        click.secho("✓ License activated!", fg="green", bold=True)
+        click.echo(f"  Plan:     Team (up to {data['seats']} seats)")
+        if data.get("customer_email"):
+            click.echo(f"  Account:  {data['customer_email']}")
+        click.echo("  Restart `apex start` for the change to take effect.")
+    except RuntimeError as e:
+        click.secho(f"✗ {e}", fg="red")
+        raise SystemExit(1)
+
+
+@main.command()
+def deactivate() -> None:
+    """Remove the license key and downgrade to Free plan."""
+    from apex.license import deactivate as do_deactivate
+    do_deactivate()
+    click.secho("✓ License removed. Plan downgraded to Free (1 seat).", fg="yellow")
+    click.echo("  Restart `apex start` for the change to take effect.")
+
+
+@main.command()
 def stop() -> None:
     """Stop the Apex platform."""
     import signal
@@ -297,6 +324,10 @@ def status() -> None:
         click.secho(f"● running on :{port}  {data}", fg="green")
     except Exception:
         click.secho(f"○ not running (no response on :{port})", fg="red")
+
+    from apex.license import get_plan
+    plan = get_plan()
+    click.echo(f"  Plan: {plan['name']}  ({plan['seats']} seat{'s' if plan['seats'] > 1 else ''})")
 
 
 @main.command()

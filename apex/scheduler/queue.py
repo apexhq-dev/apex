@@ -16,14 +16,16 @@ def insert_job(
     gpu_count: int = 1,
     priority: str = "normal",
     submitted_by: str | None = None,
+    max_retries: int = 0,
+    depends_on: str | None = None,
 ) -> dict[str, Any]:
     with get_db() as conn:
         cur = conn.execute(
             """
-            INSERT INTO jobs (name, image, script, gpu_count, priority, submitted_by)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO jobs (name, image, script, gpu_count, priority, submitted_by, max_retries, depends_on)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (name, image, script, gpu_count, priority, submitted_by),
+            (name, image, script, gpu_count, priority, submitted_by, max_retries, depends_on),
         )
         job_id = cur.lastrowid
         row = conn.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
@@ -61,6 +63,23 @@ def get_next_queued_job() -> dict[str, Any] | None:
             f"ORDER BY {_PRIORITY_ORDER}, submitted_at ASC LIMIT 1"
         ).fetchone()
     return row_to_dict(row)
+
+
+def are_dependencies_met(job: dict[str, Any]) -> bool:
+    """Return True if all jobs in depends_on are status='done'."""
+    deps = job.get("depends_on")
+    if not deps:
+        return True
+    dep_ids = [int(x.strip()) for x in deps.split(",") if x.strip()]
+    if not dep_ids:
+        return True
+    placeholders = ",".join("?" for _ in dep_ids)
+    with get_db() as conn:
+        row = conn.execute(
+            f"SELECT COUNT(*) FROM jobs WHERE id IN ({placeholders}) AND status != 'done'",
+            dep_ids,
+        ).fetchone()
+    return (row[0] or 0) == 0
 
 
 def is_gpu_busy() -> bool:
@@ -109,6 +128,28 @@ def mark_failed(job_id: int, error_msg: str) -> None:
             """,
             (error_msg, job_id),
         )
+
+
+def requeue_for_retry(job_id: int) -> bool:
+    """Re-queue a failed job if it has retries remaining. Returns True if re-queued."""
+    with get_db() as conn:
+        row = conn.execute("SELECT max_retries, retry_count FROM jobs WHERE id = ?", (job_id,)).fetchone()
+        if not row:
+            return False
+        max_r, count = row[0] or 0, row[1] or 0
+        if count >= max_r:
+            return False
+        conn.execute(
+            """
+            UPDATE jobs
+            SET status='queued', container_id=NULL, exit_code=NULL, error_msg=NULL,
+                started_at=NULL, finished_at=NULL, duration_s=NULL,
+                retry_count=?
+            WHERE id=?
+            """,
+            (count + 1, job_id),
+        )
+    return True
 
 
 def delete_job(job_id: int) -> None:

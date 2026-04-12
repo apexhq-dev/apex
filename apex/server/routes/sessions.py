@@ -3,11 +3,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from apex import docker_mgr
 from apex.config import CONFIG
+from apex.server.auth import current_user
 from apex.server.db import get_db, row_to_dict
 
 router = APIRouter()
@@ -19,7 +20,7 @@ class SessionCreate(BaseModel):
 
 
 @router.get("")
-def list_sessions() -> list[dict[str, Any]]:
+def list_sessions(_user: dict = Depends(current_user)) -> list[dict[str, Any]]:
     with get_db() as conn:
         rows = conn.execute(
             "SELECT * FROM sessions WHERE status = 'running' ORDER BY created_at DESC"
@@ -28,7 +29,7 @@ def list_sessions() -> list[dict[str, Any]]:
 
 
 @router.post("")
-def launch_session(payload: SessionCreate) -> dict[str, Any]:
+def launch_session(payload: SessionCreate, _user: dict = Depends(current_user)) -> dict[str, Any]:
     if not docker_mgr.is_available():
         raise HTTPException(503, "docker daemon not available")
 
@@ -72,7 +73,7 @@ def launch_session(payload: SessionCreate) -> dict[str, Any]:
 
 
 @router.delete("/{session_id}")
-def stop_session(session_id: int) -> dict:
+def stop_session(session_id: int, _user: dict = Depends(current_user)) -> dict:
     with get_db() as conn:
         row = conn.execute("SELECT * FROM sessions WHERE id = ?", (session_id,)).fetchone()
     if not row:

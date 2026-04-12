@@ -31,6 +31,9 @@ def _watch_container(job_id: int, container_id: str) -> None:
         elif exit_code != 0:
             err_msg = f"container exited with code {exit_code}"
         queue.mark_finished(job_id, exit_code, err_msg)
+        # Retry on non-zero exit if retries are configured
+        if exit_code != 0:
+            queue.requeue_for_retry(job_id)
     except Exception as e:
         queue.mark_failed(job_id, f"watcher error: {e}")
 
@@ -65,8 +68,11 @@ def _loop() -> None:
         try:
             job = queue.get_next_queued_job()
             if job:
-                needs_gpu = int(job.get("gpu_count") or 0) > 0
-                if not needs_gpu or not queue.is_gpu_busy():
+                if not queue.are_dependencies_met(job):
+                    pass  # dependencies not done yet — skip this tick
+                elif int(job.get("gpu_count") or 0) > 0 and queue.is_gpu_busy():
+                    pass  # GPU busy — wait
+                else:
                     _run_job(job)
         except Exception:
             pass

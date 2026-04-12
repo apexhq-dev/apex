@@ -6,11 +6,12 @@ import json
 from datetime import datetime
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel, Field
 
 from apex import docker_mgr
 from apex.scheduler import queue
+from apex.server.auth import current_user
 
 router = APIRouter()
 
@@ -21,6 +22,8 @@ class JobSubmit(BaseModel):
     script: str = Field(..., min_length=1)
     gpu_count: int = 1
     priority: str = "normal"
+    max_retries: int = Field(0, ge=0, le=10)
+    depends_on: list[int] | None = None
 
 
 @router.get("")
@@ -28,28 +31,33 @@ def list_jobs(
     status: str | None = Query(None),
     limit: int = Query(50, ge=1, le=500),
     offset: int = Query(0, ge=0),
+    _user: dict = Depends(current_user),
 ) -> list[dict[str, Any]]:
     return queue.list_jobs(status=status, limit=limit, offset=offset)
 
 
 @router.post("")
-def submit_job(payload: JobSubmit) -> dict[str, Any]:
+def submit_job(payload: JobSubmit, user: dict = Depends(current_user)) -> dict[str, Any]:
     if payload.priority not in ("low", "normal", "high"):
         raise HTTPException(400, "priority must be one of: low, normal, high")
     if payload.gpu_count < 0:
         raise HTTPException(400, "gpu_count must be >= 0")
+    depends_on_str = ",".join(str(d) for d in payload.depends_on) if payload.depends_on else None
     job = queue.insert_job(
         name=payload.name,
         image=payload.image,
         script=payload.script,
         gpu_count=payload.gpu_count,
         priority=payload.priority,
+        submitted_by=user.get("email"),
+        max_retries=payload.max_retries,
+        depends_on=depends_on_str,
     )
     return job
 
 
 @router.get("/{job_id}")
-def get_job(job_id: int) -> dict[str, Any]:
+def get_job(job_id: int, _user: dict = Depends(current_user)) -> dict[str, Any]:
     job = queue.get_job(job_id)
     if not job:
         raise HTTPException(404, "job not found")
@@ -57,7 +65,7 @@ def get_job(job_id: int) -> dict[str, Any]:
 
 
 @router.delete("/{job_id}")
-def cancel_job(job_id: int) -> dict:
+def cancel_job(job_id: int, _user: dict = Depends(current_user)) -> dict:
     job = queue.get_job(job_id)
     if not job:
         raise HTTPException(404, "job not found")

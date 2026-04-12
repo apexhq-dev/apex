@@ -1,6 +1,7 @@
 """Docker SDK wrapper used by the scheduler and sessions routes."""
 from __future__ import annotations
 
+import os
 import socket
 from typing import Any
 
@@ -146,6 +147,7 @@ def run_job_container(job_id: int, image: str, command: str, gpu_count: int) -> 
         "image": image,
         "command": command,
         "detach": True,
+        "user": f"{os.getuid()}:{os.getgid()}",
         "volumes": {workspace: {"bind": "/workspace", "mode": "rw"}},
         "working_dir": "/workspace",
         "shm_size": "16g",

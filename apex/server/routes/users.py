@@ -6,6 +6,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from apex.license import get_plan
 from apex.server.auth import (
     create_access_token,
     current_user,
@@ -67,9 +68,37 @@ def invite(payload: InviteRequest, user: dict = Depends(current_user)) -> dict:
         raise HTTPException(400, "role must be owner/admin/member")
     if get_user_by_email(payload.email):
         raise HTTPException(409, "user already exists")
+
+    # Enforce seat limit
+    plan = get_plan()
+    with get_db() as conn:
+        seat_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+    if seat_count >= plan["seats"]:
+        tier = plan["name"]
+        raise HTTPException(
+            403,
+            f"Seat limit reached ({seat_count}/{plan['seats']} on {tier} plan). "
+            f"{'Upgrade to Team at https://tryapex.dev' if plan['plan'] == 'free' else 'Contact support to add more seats.'}",
+        )
+
     with get_db() as conn:
         conn.execute(
             "INSERT INTO users (email, hashed_pw, display_name, role) VALUES (?, ?, ?, ?)",
             (payload.email, hash_password(payload.password), payload.display_name, payload.role),
         )
     return {"ok": True, "email": payload.email}
+
+
+@router.get("/plan")
+def plan_info(user: dict = Depends(current_user)) -> dict:
+    """Return the current plan, seat usage, and limits."""
+    plan = get_plan()
+    with get_db() as conn:
+        seat_count = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+    return {
+        "plan": plan["plan"],
+        "name": plan["name"],
+        "seats_used": seat_count,
+        "seats_limit": plan["seats"],
+        "customer_email": plan.get("customer_email"),
+    }
