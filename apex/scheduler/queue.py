@@ -65,6 +65,17 @@ def get_next_queued_job() -> dict[str, Any] | None:
     return row_to_dict(row)
 
 
+def get_queued_jobs(limit: int = 20) -> list[dict[str, Any]]:
+    """Return all queued jobs in dispatch order (priority → submission time)."""
+    with get_db() as conn:
+        rows = conn.execute(
+            f"SELECT * FROM jobs WHERE status = 'queued' "
+            f"ORDER BY {_PRIORITY_ORDER}, submitted_at ASC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def are_dependencies_met(job: dict[str, Any]) -> bool:
     """Return True if all jobs in depends_on are status='done'."""
     deps = job.get("depends_on")
