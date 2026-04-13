@@ -1,2 +1,9 @@
 SPEC.md
 .claude/
+
+# Python build artifacts
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
