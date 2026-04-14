@@ -16,8 +16,30 @@ const R = window.R = {
   },
 };
 
+// ---- Auth state ----
+R.loggedOut = false;
+
+R.showLogin = function() {
+  R.loggedOut = true;
+  const m = document.getElementById('loginModal');
+  if (m) m.classList.add('open');
+  const err = document.getElementById('login-error');
+  if (err) err.style.display = 'none';
+  const pw = document.getElementById('login-password');
+  if (pw) { pw.value = ''; setTimeout(() => pw.focus(), 0); }
+};
+
+R.handleAuthFailure = function() {
+  localStorage.removeItem('apex_token');
+  R.showLogin();
+};
+
 // ---- API helper ----
 R.api = async function(path, opts = {}) {
+  // Short-circuit once we know we're logged out — stops poll loops from
+  // hammering the backend with 401s while the login modal is up.
+  if (R.loggedOut) throw new Error('unauthorized');
+
   const token = localStorage.getItem('apex_token');
   const headers = Object.assign(
     { 'Content-Type': 'application/json' },
@@ -26,7 +48,7 @@ R.api = async function(path, opts = {}) {
   );
   const res = await fetch('/api' + path, { ...opts, headers });
   if (res.status === 401) {
-    // Not fatal in single-user mode — just surface the error.
+    R.handleAuthFailure();
     throw new Error('unauthorized');
   }
   if (!res.ok) {
@@ -164,8 +186,55 @@ R.loadMe = async function() {
   });
 
   document.getElementById('user-menu-signout').addEventListener('click', function() {
-    localStorage.removeItem('apex_token');
-    location.reload();
+    menu.classList.remove('open');
+    R.handleAuthFailure();
+  });
+})();
+
+// ---- Login form ----
+(function() {
+  const submit = document.getElementById('login-submit');
+  if (!submit) return;
+  const emailEl = document.getElementById('login-email');
+  const pwEl    = document.getElementById('login-password');
+  const errEl   = document.getElementById('login-error');
+
+  async function doLogin() {
+    errEl.style.display = 'none';
+    submit.disabled = true;
+    const origText = submit.textContent;
+    submit.textContent = 'Signing in…';
+    try {
+      const res = await fetch('/api/users/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: (emailEl.value || '').trim(),
+          password: pwEl.value || '',
+        }),
+      });
+      if (!res.ok) {
+        let msg = `HTTP ${res.status}`;
+        try { const j = await res.json(); msg = j.detail || msg; } catch {}
+        throw new Error(msg);
+      }
+      const data = await res.json();
+      localStorage.setItem('apex_token', data.access_token);
+      // Full reload gives us a clean state — pollers restart, stale UI clears.
+      location.reload();
+    } catch (e) {
+      errEl.textContent = e.message || 'Sign-in failed';
+      errEl.style.display = 'block';
+      submit.disabled = false;
+      submit.textContent = origText;
+    }
+  }
+
+  submit.addEventListener('click', doLogin);
+  [emailEl, pwEl].forEach(el => {
+    el.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); doLogin(); }
+    });
   });
 })();
 
@@ -187,6 +256,13 @@ R.switchTab = function(tab) {
 
 // ---- Boot ----
 document.addEventListener('DOMContentLoaded', () => {
+  // No token → skip all authenticated calls and show the login modal. This
+  // also short-circuits pollers set up in jobs.js / sessions.js via R.api's
+  // loggedOut check.
+  if (!localStorage.getItem('apex_token')) {
+    R.showLogin();
+    return;
+  }
   R.onRoute();
   R.loadMe();
   R.updatePageSub();
